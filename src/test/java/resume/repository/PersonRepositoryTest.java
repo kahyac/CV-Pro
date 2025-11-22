@@ -18,7 +18,6 @@ import static org.assertj.core.api.Assertions.*;
 @DataJpaTest
 class PersonRepositoryTest {
 
-
     @Autowired
     PersonRepository personRepository;
 
