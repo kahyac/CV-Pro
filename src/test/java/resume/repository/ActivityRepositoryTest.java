@@ -18,6 +18,7 @@ class ActivityRepositoryTest {
 
     @Autowired
     PersonRepository personRepository;
+
     @Autowired
     ActivityRepository activityRepository;
 
@@ -61,8 +62,8 @@ class ActivityRepositoryTest {
     @Test
     void createQueryAndOrphanRemoval() {
         var p = personRepository.save(Person.builder()
-                .firstName("Ikram").lastName("Loukridi")
-                .email("ikram@mail.fr")
+                .firstName("Ikrame").lastName("Loukridi")
+                .email("ikrame@mail.fr")
                 .birthDate(LocalDate.of(2012,12,12))
                 .passwordHash("x".repeat(60))
                 .build());
