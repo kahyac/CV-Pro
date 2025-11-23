@@ -3,6 +3,7 @@ import CvBrowseView from '../views/CvBrowseView.vue'
 import LoginView from '../views/LoginView.vue'
 import CvEditView from '../views/CvEditView.vue'
 import PersonCreateView from '../views/PersonCreateView.vue'
+import PersonEditView from '../views/PersonEditView.vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
@@ -23,6 +24,11 @@ const router = createRouter({
     {
       path: '/register',
       component: PersonCreateView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/profile',
+      component: PersonEditView,
       meta: { requiresAuth: true }
     },
   ],

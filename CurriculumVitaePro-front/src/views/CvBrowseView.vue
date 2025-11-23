@@ -7,7 +7,10 @@
           <h3 class="mb-0">Parcourir les CV</h3>
           <div class="text-muted small">Recherche par nom ou prénom</div>
         </div>
-        <span class="badge text-bg-secondary">{{ persons.length }}</span>
+        <!-- total côté backend -->
+        <span class="badge text-bg-secondary">
+          {{ totalElements }} CV
+        </span>
       </div>
 
       <!-- Alert erreur -->
@@ -28,9 +31,9 @@
           v-model="q"
           class="form-control"
           placeholder="Ex: Kartout, Yacine..."
-          @keyup.enter="search"
+          @keyup.enter="doSearch"
         />
-        <button class="btn btn-dark" @click="search" :disabled="loading">
+        <button class="btn btn-dark" @click="doSearch" :disabled="loading">
           Rechercher
         </button>
         <button
@@ -81,6 +84,42 @@
           <i class="bi bi-chevron-right opacity-75"></i>
         </button>
       </div>
+
+      <!-- Pagination -->
+      <nav v-if="totalPages > 1 && !loading" class="mt-3">
+        <ul class="pagination pagination-sm justify-content-center mb-0">
+          <li class="page-item" :class="{ disabled: page === 0 }">
+            <button class="page-link" @click="goToPage(page - 1)" :disabled="page === 0">
+              ‹
+            </button>
+          </li>
+
+          <li
+            v-for="p in pageNumbers"
+            :key="p"
+            class="page-item"
+            :class="{ active: p === page }"
+          >
+            <button class="page-link" @click="goToPage(p)">
+              {{ p + 1 }}
+            </button>
+          </li>
+
+          <li class="page-item" :class="{ disabled: page >= totalPages - 1 }">
+            <button
+              class="page-link"
+              @click="goToPage(page + 1)"
+              :disabled="page >= totalPages - 1"
+            >
+              ›
+            </button>
+          </li>
+        </ul>
+
+        <div class="text-center small text-muted mt-1">
+          Page {{ page + 1 }} / {{ totalPages }}
+        </div>
+      </nav>
     </div>
 
     <!-- Colonne droite : détails -->
@@ -151,7 +190,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import {ref, onMounted, computed, watch} from 'vue'
 import api from '@/services/api'
 
 const persons = ref([])
@@ -160,14 +199,41 @@ const q = ref('')
 const loading = ref(false)
 const error = ref(null)
 
+const page = ref(0)
+const size = ref(50)
+const totalPages = ref(0)
+const totalElements = ref(0)
+
 let searchTimer = null
 
-async function loadPersons() {
+const isSearching = computed(() => !!q.value.trim())
+
+const pageNumbers = computed(() => {
+  // afficher max 5 pages autour
+  const t = totalPages.value
+  const cur = page.value
+  if (t <= 5) return Array.from({length: t}, (_, i) => i)
+
+  const start = Math.max(0, cur - 2)
+  const end = Math.min(t - 1, cur + 2)
+  const arr = []
+  for (let i = start; i <= end; i++) arr.push(i)
+  return arr
+})
+
+async function fetchPersons() {
   loading.value = true
   error.value = null
   try {
-    const res = await api.get('/persons?page=0&size=50')
+    const url = isSearching.value
+      ? `/persons/search?q=${encodeURIComponent(q.value.trim())}&page=${page.value}&size=${size.value}`
+      : `/persons?page=${page.value}&size=${size.value}`
+
+    const res = await api.get(url)
+
     persons.value = res.data.content
+    totalPages.value = res.data.totalPages
+    totalElements.value = res.data.totalElements
   } catch (e) {
     error.value = "Impossible de charger les CV. Vérifie ton backend."
   } finally {
@@ -188,39 +254,34 @@ async function selectPerson(id) {
   }
 }
 
-async function search() {
-  const query = q.value.trim()
-  if (!query) return loadPersons()
-
-  loading.value = true
-  error.value = null
-  try {
-    const res = await api.get(`/persons/search?q=${encodeURIComponent(query)}&page=0&size=50`)
-    persons.value = res.data.content
-    selected.value = null
-  } catch (e) {
-    error.value = "Erreur de recherche. Réessaie."
-  } finally {
-    loading.value = false
-  }
+function doSearch() {
+  page.value = 0
+  selected.value = null
+  fetchPersons()
 }
 
 function resetSearch() {
   q.value = ''
+  page.value = 0
   selected.value = null
-  loadPersons()
+  fetchPersons()
+}
+
+function goToPage(p) {
+  if (p < 0 || p >= totalPages.value) return
+  page.value = p
+  selected.value = null
+  fetchPersons()
 }
 
 watch(q, (val) => {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
-    if (!val.trim()) {
-      loadPersons()
-    } else {
-      search()
-    }
+    page.value = 0
+    selected.value = null
+    fetchPersons()
   }, 400)
 })
 
-onMounted(loadPersons)
+onMounted(fetchPersons)
 </script>

@@ -40,14 +40,13 @@ public class PersonController {
     }
 
 
-    @PutMapping("/{id}/website")
-    public PersonResponseDto updateWebsite(
+    @PutMapping("/{id}")
+    public PersonResponseDto updatePerson(
             @PathVariable UUID id,
             @RequestAttribute("authPersonId") UUID authId,
             @Valid @RequestBody PersonUpdateRequestDto dto
     ) {
-        // ton service ne gère que website
-        var updated = personService.updateWebsite(id, authId, dto.website());
+        var updated = personService.updatePerson(id, authId, dto);
         return toDto(updated, true);
     }
 

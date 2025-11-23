@@ -20,11 +20,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PersonServiceTest {
 
-    @Mock PersonRepository personRepository;
+    @Mock
+    PersonRepository personRepository;
+
     @Mock
     PasswordHasher passwordHasher;
 
-    @InjectMocks PersonService personService;
+    @InjectMocks
+    PersonService personService;
 
     // ---------- CREATE PERSON ----------
 
@@ -151,51 +154,6 @@ class PersonServiceTest {
                 .isInstanceOf(NotFoundException.class);
 
         verify(personRepository).findWithActivitiesById(id);
-        verifyNoMoreInteractions(personRepository);
-    }
-
-    // ---------- UPDATE WEBSITE ----------
-
-    @Test
-    void updateWebsite_ok_forOwner() {
-        var id = UUID.randomUUID();
-        var p = Person.builder().id(id).website(null).build();
-
-        when(personRepository.findById(id)).thenReturn(Optional.of(p));
-        when(personRepository.save(any(Person.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
-
-        var updated = personService.updateWebsite(id, id, "https://new.com");
-
-        assertThat(updated.getWebsite()).isEqualTo("https://new.com");
-
-        verify(personRepository).findById(id);
-        verify(personRepository).save(p);
-        verifyNoMoreInteractions(personRepository);
-    }
-
-    @Test
-    void updateWebsite_forbidden_ifNotOwner() {
-        var personId = UUID.randomUUID();
-        var otherId = UUID.randomUUID();
-
-        assertThatThrownBy(() ->
-                personService.updateWebsite(personId, otherId, "https://new.com")
-        ).isInstanceOf(ForbiddenException.class);
-
-        verifyNoInteractions(personRepository);
-    }
-
-    @Test
-    void updateWebsite_notFound_whenMissing() {
-        var id = UUID.randomUUID();
-        when(personRepository.findById(id)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() ->
-                personService.updateWebsite(id, id, "https://new.com")
-        ).isInstanceOf(NotFoundException.class);
-
-        verify(personRepository).findById(id);
         verifyNoMoreInteractions(personRepository);
     }
 

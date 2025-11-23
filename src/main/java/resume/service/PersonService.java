@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import resume.model.Person;
 import resume.repository.PersonRepository;
+import resume.web.dto.person.PersonUpdateRequestDto;
 import resume.web.security.PasswordHasher;
 import resume.web.dto.person.PersonCreateRequestDto;
 import resume.service.exceptions.*;
@@ -54,7 +55,8 @@ public class PersonService {
     }
 
     @Transactional
-    public Person updateWebsite(UUID personId, UUID authPersonId, String website) {
+    public Person updatePerson(UUID personId, UUID authPersonId, PersonUpdateRequestDto dto) {
+
         if (!personId.equals(authPersonId)) {
             throw new ForbiddenException("You can update only your profile");
         }
@@ -62,9 +64,22 @@ public class PersonService {
         var p = personRepository.findById(personId)
                 .orElseThrow(() -> new NotFoundException("Person not found"));
 
-        p.setWebsite(website);
+        if (dto.firstName() != null && !dto.firstName().isBlank()) {
+            p.setFirstName(dto.firstName());
+        }
+        if (dto.lastName() != null && !dto.lastName().isBlank()) {
+            p.setLastName(dto.lastName());
+        }
+        if (dto.website() != null) {
+            p.setWebsite(dto.website());
+        }
+        if (dto.birthDate() != null) {
+            p.setBirthDate(dto.birthDate());
+        }
+
         return personRepository.save(p);
     }
+
 
     @Transactional
     public void deletePerson(UUID personId, UUID authPersonId) {
@@ -84,10 +99,9 @@ public class PersonService {
 
     @Transactional(readOnly = true)
     public Page<Person> searchPersons(String q, int page, int size) {
-        return personRepository
-                .findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(
-                        q, q,
-                        PageRequest.of(page, size, Sort.by("lastName").ascending())
-                );
+        return personRepository.searchByNameOrActivityTitle(
+                q,
+                PageRequest.of(page, size, Sort.by("lastName").ascending())
+        );
     }
 }

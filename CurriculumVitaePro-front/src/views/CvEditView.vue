@@ -2,7 +2,7 @@
   <div>
     <div class="mb-3">
       <h3 class="mb-0">Modifier mon CV</h3>
-      <div class="text-muted small">Ajoute, visualise ou supprime tes activités</div>
+      <div class="text-muted small">Ajoute, visualise, modifie ou supprime tes activités</div>
     </div>
 
     <!-- Pas connecté -->
@@ -42,9 +42,11 @@
       <!-- Form -->
       <div class="col-lg-5">
         <div class="card p-3">
-          <h5 class="mb-3">Ajouter une activité</h5>
+          <h5 class="mb-3">
+            {{ editingId ? "Modifier l’activité" : "Ajouter une activité" }}
+          </h5>
 
-          <form @submit.prevent="addActivity" class="vstack gap-2">
+          <form @submit.prevent="submitForm" class="vstack gap-2">
             <div class="row g-2">
               <div class="col-4">
                 <label class="form-label small text-muted">Année</label>
@@ -101,10 +103,22 @@
               </div>
             </div>
 
-            <button class="btn btn-dark mt-2" :disabled="saving">
-              <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
-              Ajouter
-            </button>
+            <div class="d-flex gap-2 mt-2">
+              <button class="btn btn-dark" :disabled="saving">
+                <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                {{ editingId ? "Mettre à jour" : "Ajouter" }}
+              </button>
+
+              <button
+                v-if="editingId"
+                type="button"
+                class="btn btn-outline-secondary"
+                @click="cancelEdit"
+                :disabled="saving"
+              >
+                Annuler
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -131,6 +145,9 @@
               v-for="a in activities"
               :key="a.id"
               class="list-group-item d-flex justify-content-between align-items-start"
+              :class="{ 'active border border-2': editingId === a.id }"
+              style="cursor:pointer"
+              @click="startEdit(a)"
             >
               <div class="me-3">
                 <div class="fw-semibold">{{ a.title }}</div>
@@ -145,15 +162,18 @@
                   target="_blank"
                   rel="noopener"
                   class="small text-decoration-none d-inline-block mt-1"
+                  @click.stop
                 >
                   <i class="bi bi-link-45deg"></i> {{ a.url }}
                 </a>
               </div>
 
+              <!-- delete -->
               <button
                 class="btn btn-sm btn-outline-danger"
-                @click="deleteActivity(a.id)"
+                @click.stop="deleteActivity(a.id)"
                 :disabled="deletingId === a.id"
+                title="Supprimer"
               >
                 <span
                   v-if="deletingId === a.id"
@@ -163,6 +183,10 @@
               </button>
             </li>
           </ul>
+
+          <div class="small text-muted mt-2">
+            Clique sur une activité pour la modifier.
+          </div>
         </div>
       </div>
     </div>
@@ -170,9 +194,9 @@
 </template>
 
 <script setup>
-import {ref, onMounted} from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '@/services/api'
-import {useAuthStore} from '../stores/auth'
+import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
 const personId = ref(null)
@@ -186,13 +210,17 @@ const error = ref(null)
 const success = ref(null)
 const urlError = ref(null)
 
-const form = ref({
+const editingId = ref(null) // <-- ID de l’activité en cours d’édition
+
+const emptyForm = () => ({
   year: new Date().getFullYear(),
   type: 'PROJECT',
   title: '',
   description: '',
   url: ''
 })
+
+const form = ref(emptyForm())
 
 function decodeJwt(token) {
   try {
@@ -210,15 +238,12 @@ function decodeJwt(token) {
 }
 
 function normalizeBackendError(e) {
-  // AxiosError standard
   const status = e?.response?.status
   const data = e?.response?.data
 
   if (status === 401) return "Session expirée. Reconnecte-toi."
   if (status === 403) return "Action interdite : tu ne peux modifier que ton propre CV."
 
-  // erreurs validation Spring (MethodArgumentNotValidException)
-  // souvent structure: { errors: [{field, message}]} ou {message:"..."}
   if (data?.errors?.length) {
     return data.errors.map(er => `${er.field}: ${er.message}`).join(" • ")
   }
@@ -238,6 +263,26 @@ function validateUrl() {
   return true
 }
 
+function startEdit(a) {
+  editingId.value = a.id
+  form.value = {
+    year: a.year,
+    type: a.type,
+    title: a.title,
+    description: a.description || '',
+    url: a.url || ''
+  }
+  success.value = null
+  error.value = null
+  urlError.value = null
+}
+
+function cancelEdit() {
+  editingId.value = null
+  form.value = emptyForm()
+  urlError.value = null
+}
+
 async function loadMyActivities() {
   loading.value = true
   error.value = null
@@ -252,26 +297,42 @@ async function loadMyActivities() {
 }
 
 async function addActivity() {
-  error.value = null
-  success.value = null
-
   if (!validateUrl()) return
 
+  await api.post(`/persons/${personId.value}/activities`, {
+    ...form.value,
+    url: form.value.url?.trim() || null
+  })
+
+  success.value = "Activité ajoutée ✅"
+  cancelEdit()
+  await loadMyActivities()
+}
+
+async function updateActivity() {
+  if (!validateUrl()) return
+
+  await api.put(`/activities/${editingId.value}`, {
+    ...form.value,
+    url: form.value.url?.trim() || null
+  })
+
+  success.value = "Activité mise à jour ✅"
+  cancelEdit()
+  await loadMyActivities()
+}
+
+async function submitForm() {
+  error.value = null
+  success.value = null
   saving.value = true
+
   try {
-    await api.post(`/persons/${personId.value}/activities`, {
-      ...form.value,
-      url: form.value.url?.trim() || null
-    })
-
-    success.value = "Activité ajoutée ✅"
-
-    // reset form
-    form.value.title = ''
-    form.value.description = ''
-    form.value.url = ''
-
-    await loadMyActivities()
+    if (editingId.value) {
+      await updateActivity()
+    } else {
+      await addActivity()
+    }
   } catch (e) {
     error.value = normalizeBackendError(e)
   } finally {
@@ -287,6 +348,10 @@ async function deleteActivity(id) {
   try {
     await api.delete(`/activities/${id}`)
     success.value = "Activité supprimée ✅"
+
+    // si on supprimait celle en édition -> reset
+    if (editingId.value === id) cancelEdit()
+
     await loadMyActivities()
   } catch (e) {
     error.value = normalizeBackendError(e)
