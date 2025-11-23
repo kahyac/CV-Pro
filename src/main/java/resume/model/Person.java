@@ -56,7 +56,7 @@ public class Person {
 
 
     @NotBlank
-    @Size(min = 60, max = 100)
+    @Size(min = 6, max = 100)
     @Column(nullable = false, length = 100)
     private String passwordHash;
 

@@ -1,0 +1,22 @@
+@import './base.css';
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* petits ajustements visuels bootstrap */
+.card {
+  border: 0;
+  box-shadow: 0 4px 14px rgba(0,0,0,.06);
+  border-radius: 12px;
+}
+
+.btn, .form-control, .form-select {
+  border-radius: 10px;
+}
+
+.list-group-item {
+  border-radius: 10px;
+  margin-bottom: .5rem;
+}

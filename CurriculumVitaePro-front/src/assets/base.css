@@ -1,0 +1,21 @@
+:root {
+  --app-bg: #f5f6f8;
+  --app-card: #ffffff;
+  --app-text: #212529;
+  --app-muted: #6c757d;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-size: 15px;
+}
